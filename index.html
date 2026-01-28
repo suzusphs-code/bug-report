@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bug Report</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: #020617;
+      padding: 20px;
+      border-radius: 10px;
+      width: 400px;
+    }
+    h2 {
+      text-align: center;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+    }
+    textarea {
+      resize: none;
+      height: 100px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h2>🐞 Bug Report</h2>
+    <input id="username" placeholder="Your Username">
+    <input id="version" placeholder="Game Version">
+    <textarea id="bug" placeholder="Describe the bug..."></textarea>
+    <button onclick="sendBug()">Submit</button>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = "https://discord.com/api/webhooks/1466113946065965126/TmDaoYGqfILvEkUEigKr4JbI-LlpBLxl5Jm5kwmfaLAJ9VQzYjPbWASMzL4xcVJqBHvZ";
+
+    function sendBug() {
+      const user = document.getElementById("username").value;
+      const version = document.getElementById("version").value;
+      const bug = document.getElementById("bug").value;
+
+      if (!user || !bug) {
+        alert("Please fill all required fields.");
+        return;
+      }
+
+      const payload = {
+        embeds: [{
+          title: "🐞 New Bug Report",
+          color: 15158332,
+          fields: [
+            { name: "Reporter", value: user, inline: true },
+            { name: "Game Version", value: version || "Not specified", inline: true },
+            { name: "Bug Description", value: bug }
+          ],
+          timestamp: new Date()
+        }]
+      };
+
+      fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        alert("Bug submitted successfully!");
+        document.getElementById("bug").value = "";
+      })
+      .catch(() => {
+        alert("Failed to send bug report.");
+      });
+    }
+  </script>
+
+</body>
+</html>
