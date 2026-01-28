@@ -139,7 +139,7 @@
   </div>
 
 <script>
-const WEBHOOK_URL = "PUT_YOUR_DISCORD_WEBHOOK_HERE";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1466113946065965126/TmDaoYGqfILvEkUEigKr4JbI-LlpBLxl5Jm5kwmfaLAJ9VQzYjPbWASMzL4xcVJqBHvZ";
 
 const sendBtn = document.getElementById("send");
 const statusText = document.getElementById("status");
@@ -178,30 +178,27 @@ sendBtn.onclick = async () => {
   sendBtn.disabled = true;
   statusText.textContent = "🚀 Sending...";
 
-  const files = [...imageInput.files];
-  const attachments = [];
+  const formData = new FormData();
 
-  for (let i = 0; i < files.length; i++) {
-    const base64 = await toBase64(files[i]);
-    attachments.push({
-      id: i,
-      filename: files[i].name,
-      description: "Bug Screenshot",
-      content_type: files[i].type,
-      data: base64.split(",")[1]
-    });
-  }
-
-  const payload = {
-    content: `🐛 **New Bug Report**\n👤 **User:** ${user}\n\n${bug}`,
-    attachments
+  // Embed
+  const embed = {
+    title: "🐛 New Bug Report",
+    description: `**User:** ${user}\n\n${bug}`,
+    color: 0x7c8cff,
+    timestamp: new Date().toISOString()
   };
+  formData.append("payload_json", JSON.stringify({ embeds: [embed] }));
+
+  // Attach images
+  const files = [...imageInput.files];
+  files.forEach((file, index) => {
+    formData.append(`file${index}`, file, file.name);
+  });
 
   try {
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: formData
     });
 
     if (!res.ok) throw new Error();
@@ -218,16 +215,6 @@ sendBtn.onclick = async () => {
 
   sendBtn.disabled = false;
 };
-
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 </script>
-
 </body>
 </html>
