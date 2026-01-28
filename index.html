@@ -1,127 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Bug Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
   <style>
+    :root {
+      --bg: #0b0f1a;
+      --card: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.15);
+      --accent: #7c8cff;
+      --text: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #fff;
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #141b3d, var(--bg));
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      color: var(--text);
     }
-    .box {
-      background: #020617;
-      padding: 20px;
-      border-radius: 10px;
-      width: 420px;
-    }
-    h2 {
-      text-align: center;
-    }
-    input, textarea, button {
+
+    .card {
       width: 100%;
-      margin-top: 10px;
-      padding: 8px;
-      border-radius: 5px;
-      border: none;
+      max-width: 520px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 0 40px rgba(124,140,255,0.15);
     }
-    input[type="file"] {
-      background: #020617;
-      color: #fff;
-    }
-    textarea {
-      resize: none;
-      height: 100px;
-    }
-    button {
-      background: #2563eb;
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      font-weight: 800;
       color: white;
-      cursor: pointer;
     }
+
+    p {
+      margin-bottom: 18px;
+      opacity: 0.8;
+      font-size: 14px;
+    }
+
+    label {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin-top: 6px;
+      margin-bottom: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.3);
+      color: white;
+      resize: none;
+    }
+
+    textarea { min-height: 120px; }
+
+    input[type="file"] {
+      padding: 8px;
+    }
+
+    .preview {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .preview img {
+      height: 70px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #5f6bff);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .15s ease;
+    }
+
     button:hover {
-      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
-  <div class="box">
-    <h2>🐞 Bug Report</h2>
+  <div class="card">
+    <h1>🐞 Bug Report</h1>
+    <p>Help us improve the game. Screenshots encouraged.</p>
 
-    <input id="username" placeholder="Your Discord Username">
-    <input id="version" placeholder="Game Version">
-    <textarea id="bug" placeholder="Describe the bug... (long reports supported)"></textarea>
+    <label>Discord Username</label>
+    <input id="user" placeholder="username#0000">
 
-    <input id="image" type="file" accept="image/png, image/jpeg">
+    <label>Bug Description</label>
+    <textarea id="bug" placeholder="Explain the bug in detail..."></textarea>
 
-    <button onclick="sendBug()">Submit</button>
+    <label>Screenshots (optional)</label>
+    <input type="file" id="images" multiple accept="image/*">
+
+    <div class="preview" id="preview"></div>
+
+    <button id="send">Send Report</button>
+    <div class="status" id="status"></div>
   </div>
 
-  <script>
-  const WEBHOOK_URL = "https://discord.com/api/webhooks/1466113946065965126/TmDaoYGqfILvEkUEigKr4JbI-LlpBLxl5Jm5kwmfaLAJ9VQzYjPbWASMzL4xcVJqBHvZ";
+<script>
+const WEBHOOK_URL = "PUT_YOUR_DISCORD_WEBHOOK_HERE";
 
-  function sendBug() {
-    const user = document.getElementById("username").value.trim();
-    const version = document.getElementById("version").value.trim();
-    const bug = document.getElementById("bug").value.trim();
-    const image = document.getElementById("image").files[0];
+const sendBtn = document.getElementById("send");
+const statusText = document.getElementById("status");
+const imageInput = document.getElementById("images");
+const preview = document.getElementById("preview");
 
-    if (!user || !bug) {
-      alert("Please fill all required fields.");
-      return;
-    }
+// ---- Anti-spam (30s cooldown)
+let lastSent = localStorage.getItem("lastSent") || 0;
+const COOLDOWN = 30000;
 
-    // Discord-safe preview
-    const preview =
-      bug.length > 1000
-        ? bug.slice(0, 1000) + "… (see attached file)"
-        : bug;
+// Preview images
+imageInput.addEventListener("change", () => {
+  preview.innerHTML = "";
+  [...imageInput.files].forEach(file => {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  });
+});
 
-    const embed = {
-      title: "🐞 New Bug Report",
-      color: 15158332,
-      fields: [
-        { name: "Reporter", value: user, inline: true },
-        { name: "Game Version", value: version || "Not specified", inline: true },
-        { name: "Bug Description", value: preview }
-      ],
-      timestamp: new Date().toISOString()
-    };
+sendBtn.onclick = async () => {
+  const now = Date.now();
+  if (now - lastSent < COOLDOWN) {
+    statusText.textContent = "⏳ Please wait before submitting again.";
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append("payload_json", JSON.stringify({ embeds: [embed] }));
+  const user = document.getElementById("user").value || "Anonymous";
+  const bug = document.getElementById("bug").value;
 
-    let fileIndex = 0;
+  if (!bug) {
+    statusText.textContent = "❌ Bug description required.";
+    return;
+  }
 
-    // Attach full bug report if long
-    if (bug.length > 1000) {
-      const bugFile = new Blob([bug], { type: "text/plain" });
-      formData.append(`file${fileIndex}`, bugFile, "bug-report.txt");
-      fileIndex++;
-    }
+  sendBtn.disabled = true;
+  statusText.textContent = "🚀 Sending...";
 
-    // Attach image if present
-    if (image) {
-      formData.append(`file${fileIndex}`, image);
-    }
+  const files = [...imageInput.files];
+  const attachments = [];
 
-    fetch(WEBHOOK_URL, {
-      method: "POST",
-      body: formData
-    })
-    .then(() => {
-      alert("Bug submitted successfully!");
-      document.getElementById("bug").value = "";
-      document.getElementById("image").value = "";
-    })
-    .catch(() => {
-      alert("Failed to submit bug report.");
+  for (let i = 0; i < files.length; i++) {
+    const base64 = await toBase64(files[i]);
+    attachments.push({
+      id: i,
+      filename: files[i].name,
+      description: "Bug Screenshot",
+      content_type: files[i].type,
+      data: base64.split(",")[1]
     });
   }
+
+  const payload = {
+    content: `🐛 **New Bug Report**\n👤 **User:** ${user}\n\n${bug}`,
+    attachments
+  };
+
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error();
+
+    statusText.textContent = "✅ Bug report sent!";
+    localStorage.setItem("lastSent", Date.now());
+    document.getElementById("bug").value = "";
+    preview.innerHTML = "";
+    imageInput.value = "";
+
+  } catch {
+    statusText.textContent = "❌ Failed to send report.";
+  }
+
+  sendBtn.disabled = false;
+};
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 </script>
 
 </body>
