@@ -54,7 +54,7 @@
 
     <input id="username" placeholder="Your Discord Username">
     <input id="version" placeholder="Game Version">
-    <textarea id="bug" placeholder="Describe the bug..."></textarea>
+    <textarea id="bug" placeholder="Describe the bug... (long reports supported)"></textarea>
 
     <input id="image" type="file" accept="image/png, image/jpeg">
 
@@ -65,9 +65,9 @@
     const WEBHOOK_URL = "https://discord.com/api/webhooks/1466113946065965126/TmDaoYGqfILvEkUEigKr4JbI-LlpBLxl5Jm5kwmfaLAJ9VQzYjPbWASMzL4xcVJqBHvZ";
 
     function sendBug() {
-      const user = document.getElementById("username").value;
-      const version = document.getElementById("version").value;
-      const bug = document.getElementById("bug").value;
+      const user = document.getElementById("username").value.trim();
+      const version = document.getElementById("version").value.trim();
+      const bug = document.getElementById("bug").value.trim();
       const image = document.getElementById("image").files[0];
 
       if (!user || !bug) {
@@ -75,20 +75,33 @@
         return;
       }
 
+      // Discord-safe preview (embed limit)
+      const preview =
+        bug.length > 1000
+          ? bug.slice(0, 1000) + "… (see attached file)"
+          : bug;
+
       const embed = {
         title: "🐞 New Bug Report",
         color: 15158332,
         fields: [
           { name: "Reporter", value: user, inline: true },
           { name: "Game Version", value: version || "Not specified", inline: true },
-          { name: "Bug Description", value: bug }
+          { name: "Bug Description", value: preview }
         ],
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       };
 
       const formData = new FormData();
       formData.append("payload_json", JSON.stringify({ embeds: [embed] }));
 
+      // Attach full bug report if too long
+      if (bug.length > 1000) {
+        const bugFile = new Blob([bug], { type: "text/plain" });
+        formData.append("file", bugFile, "bug-report.txt");
+      }
+
+      // Attach image (if any)
       if (image) {
         formData.append("file", image);
       }
