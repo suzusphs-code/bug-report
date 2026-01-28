@@ -137,112 +137,96 @@
     <button id="send">Send Report</button>
     <div class="status" id="status"></div>
   </div>
+
 <script>
-  const WEBHOOK_URL = "PASTE_YOUR_WEBHOOK_HERE";
-  const COOLDOWN_SECONDS = 30;
-  const COOLDOWN_KEY = "bug_report_cooldown";
+const WEBHOOK_URL = "PUT_YOUR_DISCORD_WEBHOOK_HERE";
 
-  function sendBug() {
-    const now = Date.now();
-    const lastSent = localStorage.getItem(COOLDOWN_KEY);
+const sendBtn = document.getElementById("send");
+const statusText = document.getElementById("status");
+const imageInput = document.getElementById("images");
+const preview = document.getElementById("preview");
 
-    if (lastSent && now - lastSent < COOLDOWN_SECONDS * 1000) {
-      const remaining = Math.ceil(
-        (COOLDOWN_SECONDS * 1000 - (now - lastSent)) / 1000
-      );
-      alert(`Please wait ${remaining}s before submitting another report.`);
-      return;
-    }
+// ---- Anti-spam (30s cooldown)
+let lastSent = localStorage.getItem("lastSent") || 0;
+const COOLDOWN = 30000;
 
-    const user = document.getElementById("username").value.trim();
-    const version = document.getElementById("version").value.trim();
-    const bug = document.getElementById("bug").value.trim();
-    const image = document.getElementById("image").files[0];
+// Preview images
+imageInput.addEventListener("change", () => {
+  preview.innerHTML = "";
+  [...imageInput.files].forEach(file => {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
+  });
+});
 
-    if (!user || !bug) {
-      alert("Please fill all required fields.");
-      return;
-    }
+sendBtn.onclick = async () => {
+  const now = Date.now();
+  if (now - lastSent < COOLDOWN) {
+    statusText.textContent = "⏳ Please wait before submitting again.";
+    return;
+  }
 
-    const preview =
-      bug.length > 1000
-        ? bug.slice(0, 1000) + "… (see attached file)"
-        : bug;
+  const user = document.getElementById("user").value || "Anonymous";
+  const bug = document.getElementById("bug").value;
 
-    const embed = {
-      title: "🐞 New Bug Report",
-      color: 15158332,
-      fields: [
-        { name: "Reporter", value: user, inline: true },
-        { name: "Game Version", value: version || "Not specified", inline: true },
-        { name: "Bug Description", value: preview }
-      ],
-      timestamp: new Date().toISOString()
-    };
+  if (!bug) {
+    statusText.textContent = "❌ Bug description required.";
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append("payload_json", JSON.stringify({ embeds: [embed] }));
+  sendBtn.disabled = true;
+  statusText.textContent = "🚀 Sending...";
 
-    let fileIndex = 0;
+  const files = [...imageInput.files];
+  const attachments = [];
 
-    if (bug.length > 1000) {
-      const bugFile = new Blob([bug], { type: "text/plain" });
-      formData.append(`file${fileIndex}`, bugFile, "bug-report.txt");
-      fileIndex++;
-    }
-
-    if (image) {
-      formData.append(`file${fileIndex}`, image);
-    }
-
-    fetch(WEBHOOK_URL, {
-      method: "POST",
-      body: formData
-    })
-    .then(() => {
-      localStorage.setItem(COOLDOWN_KEY, Date.now());
-
-      alert("Bug submitted successfully!");
-      document.getElementById("bug").value = "";
-      document.getElementById("image").value = "";
-
-      startCooldownUI();
-    })
-    .catch(() => {
-      alert("Failed to submit bug report.");
+  for (let i = 0; i < files.length; i++) {
+    const base64 = await toBase64(files[i]);
+    attachments.push({
+      id: i,
+      filename: files[i].name,
+      description: "Bug Screenshot",
+      content_type: files[i].type,
+      data: base64.split(",")[1]
     });
   }
 
-  // Optional: disable button + countdown
-  function startCooldownUI() {
-    const button = document.querySelector("button");
-    let remaining = COOLDOWN_SECONDS;
+  const payload = {
+    content: `🐛 **New Bug Report**\n👤 **User:** ${user}\n\n${bug}`,
+    attachments
+  };
 
-    button.disabled = true;
-    button.textContent = `Cooldown (${remaining}s)`;
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-    const interval = setInterval(() => {
-      remaining--;
-      button.textContent = `Cooldown (${remaining}s)`;
+    if (!res.ok) throw new Error();
 
-      if (remaining <= 0) {
-        clearInterval(interval);
-        button.disabled = false;
-        button.textContent = "Submit";
-      }
-    }, 1000);
+    statusText.textContent = "✅ Bug report sent!";
+    localStorage.setItem("lastSent", Date.now());
+    document.getElementById("bug").value = "";
+    preview.innerHTML = "";
+    imageInput.value = "";
+
+  } catch {
+    statusText.textContent = "❌ Failed to send report.";
   }
 
-  // Resume cooldown on refresh
-  window.addEventListener("load", () => {
-    const lastSent = localStorage.getItem(COOLDOWN_KEY);
-    if (!lastSent) return;
+  sendBtn.disabled = false;
+};
 
-    const elapsed = Math.floor((Date.now() - lastSent) / 1000);
-    if (elapsed < COOLDOWN_SECONDS) {
-      startCooldownUI();
-    }
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
+}
 </script>
 
 </body>
