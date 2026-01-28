@@ -17,7 +17,7 @@
       background: #020617;
       padding: 20px;
       border-radius: 10px;
-      width: 400px;
+      width: 420px;
     }
     h2 {
       text-align: center;
@@ -28,6 +28,10 @@
       padding: 8px;
       border-radius: 5px;
       border: none;
+    }
+    input[type="file"] {
+      background: #020617;
+      color: #fff;
     }
     textarea {
       resize: none;
@@ -47,49 +51,59 @@
 
   <div class="box">
     <h2>🐞 Bug Report</h2>
-    <input id="username" placeholder="Your Username">
+
+    <input id="username" placeholder="Your Discord Username">
     <input id="version" placeholder="Game Version">
     <textarea id="bug" placeholder="Describe the bug..."></textarea>
+
+    <input id="image" type="file" accept="image/png, image/jpeg">
+
     <button onclick="sendBug()">Submit</button>
   </div>
 
   <script>
-    const WEBHOOK_URL = "https://discord.com/api/webhooks/1466113946065965126/TmDaoYGqfILvEkUEigKr4JbI-LlpBLxl5Jm5kwmfaLAJ9VQzYjPbWASMzL4xcVJqBHvZ";
+    const WEBHOOK_URL = "PASTE_DISCORD_WEBHOOK_HERE";
 
     function sendBug() {
       const user = document.getElementById("username").value;
       const version = document.getElementById("version").value;
       const bug = document.getElementById("bug").value;
+      const image = document.getElementById("image").files[0];
 
       if (!user || !bug) {
         alert("Please fill all required fields.");
         return;
       }
 
-      const payload = {
-        embeds: [{
-          title: "🐞 New Bug Report",
-          color: 15158332,
-          fields: [
-            { name: "Reporter", value: user, inline: true },
-            { name: "Game Version", value: version || "Not specified", inline: true },
-            { name: "Bug Description", value: bug }
-          ],
-          timestamp: new Date()
-        }]
+      const embed = {
+        title: "🐞 New Bug Report",
+        color: 15158332,
+        fields: [
+          { name: "Reporter", value: user, inline: true },
+          { name: "Game Version", value: version || "Not specified", inline: true },
+          { name: "Bug Description", value: bug }
+        ],
+        timestamp: new Date()
       };
+
+      const formData = new FormData();
+      formData.append("payload_json", JSON.stringify({ embeds: [embed] }));
+
+      if (image) {
+        formData.append("file", image);
+      }
 
       fetch(WEBHOOK_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: formData
       })
       .then(() => {
         alert("Bug submitted successfully!");
         document.getElementById("bug").value = "";
+        document.getElementById("image").value = "";
       })
       .catch(() => {
-        alert("Failed to send bug report.");
+        alert("Failed to submit bug report.");
       });
     }
   </script>
